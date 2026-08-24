@@ -1,0 +1,110 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Remote {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  type      String
+  config    String   // JSON string of config (e.g. client_id, token, etc)
+  plans     Plan[]
+}
+
+model Source {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  path      String
+  plans     Plan[]
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  schedule    String   // Cron string
+  encrypt          Boolean  @default(false)
+  password         String?
+  enabled          Boolean  @default(true)
+  remoteFolderPath String   @default("")
+  backupPrefix     String   @default("backup")
+  status           String   @default("Active")
+  
+  sourceId    String
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  remoteId    String
+  remote      Remote   @relation(fields: [remoteId], references: [id], onDelete: Cascade)
+  
+  logs        BackupLog[]
+}
+
+model BackupLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  status    String   // "Success", "Failed", "Running"
+  message   String?
+  bytes     BigInt?
+  files     Int?
+  rawOutput String?
+  completedAt DateTime?
+}
+
+// NextAuth tables
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  
+  access_token       String?  
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  username      String?   @unique
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
