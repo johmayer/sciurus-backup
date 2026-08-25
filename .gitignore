@@ -42,3 +42,9 @@ config.yaml
 next-env.d.ts
 worker.cjs
 sync-config.cjs
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
