@@ -56,6 +56,10 @@ Sciurus uses environment variables for secure, server-level configurations. You 
 # Required: Generate a secure secret for session encryption (e.g., openssl rand -base64 32)
 AUTH_SECRET="your_secure_random_string"
 
+# Required if deploying behind a reverse proxy (e.g., Kubernetes Ingress, Nginx, Cloudflare)
+# Set this to the public URL where Sciurus is accessible
+AUTH_URL="https://backup.yourdomain.com"
+
 # Required: Encryption key for securing config.yaml secrets (e.g., openssl rand -base64 32)
 CONFIG_ENCRYPTION_KEY="your_secure_encryption_key"
 

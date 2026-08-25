@@ -104,6 +104,11 @@ async function syncConfig() {
         needsRewrite = true;
       }
 
+      if (plan.encrypt && (!plan.password || (typeof plan.password === 'string' && plan.password.trim() === ''))) {
+        console.error(`[Sync] Validation Error: Plan "${plan.name}" has encryption enabled but no password was provided. Skipping plan.`);
+        continue;
+      }
+
       if (sourceId && remoteId) {
         await prisma.plan.upsert({
           where: { id: plan.id || `plan-${plan.name}` },

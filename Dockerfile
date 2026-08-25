@@ -2,7 +2,7 @@ FROM node:20-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
-RUN apt-get update && apt-get install -y curl unzip sudo && \
+RUN apt-get update && apt-get install -y curl unzip sudo procps && \
     sudo -v ; curl https://rclone.org/install.sh | sudo bash && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -33,7 +33,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Install Prisma CLI globally to run migrations in start.sh
-RUN npm i -g prisma
+RUN npm i -g prisma@5.22.0
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

@@ -61,6 +61,10 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
 
   const handleSave = async () => {
     setSaveError("");
+    if (encrypt && !password.trim()) {
+      setSaveError("A password is required when encryption is enabled.");
+      return;
+    }
     setSaving(true);
     try {
       if (editItem) {
@@ -189,7 +193,7 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
           {encrypt && (
             <div className="grid grid-cols-[130px_1fr] items-center gap-4">
               <Label htmlFor="password" className="text-right">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="" placeholder={editItem ? "(Leave blank to keep unchanged)" : "Enter secure password"} />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter secure password" />
             </div>
           )}
         </div>

@@ -83,6 +83,9 @@ export async function getPlans() {
 }
 
 export async function createPlan(data: Prisma.PlanUncheckedCreateInput) {
+  if (data.encrypt && (!data.password || (typeof data.password === 'string' && data.password.trim() === ''))) {
+    throw new Error("Password is required when encryption is enabled.");
+  }
   if (data.password && !isEncrypted(data.password)) {
     data.password = encryptSecret(data.password);
   }
@@ -196,6 +199,9 @@ export async function updateSource(id: string, data: Prisma.SourceUpdateInput) {
 }
 
 export async function updatePlan(id: string, data: Prisma.PlanUncheckedUpdateInput) {
+  if (data.encrypt && (!data.password || (typeof data.password === 'string' && data.password.trim() === ''))) {
+    throw new Error("Password is required when encryption is enabled.");
+  }
   if (data.password && typeof data.password === 'string' && !isEncrypted(data.password)) {
     data.password = encryptSecret(data.password);
   }
