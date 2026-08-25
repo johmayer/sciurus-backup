@@ -78,8 +78,60 @@ export async function deleteSource(id: string) {
 export async function getPlans() {
   return await prisma.plan.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { source: true, remote: true }
+    include: { 
+      source: true, 
+      remote: true,
+      logs: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      }
+    }
   })
+}
+
+export async function getLogs() {
+  return await prisma.backupLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { plan: true }
+  })
+}
+
+export async function cancelPlan(id: string) {
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    
+    try {
+      await execAsync(`pkill -f "rclone.*${id}"`);
+    } catch (e) {}
+    
+    try {
+      await execAsync(`pkill -f "backup.cjs.*${id}"`);
+    } catch (e) {}
+
+    const plan = await prisma.plan.findUnique({ where: { id } });
+    if (plan?.status === 'Running') {
+      await prisma.plan.update({ where: { id }, data: { status: 'Error' } });
+      const latestLog = await prisma.backupLog.findFirst({
+        where: { planId: id, status: 'Running' },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (latestLog) {
+        await prisma.backupLog.update({
+          where: { id: latestLog.id },
+          data: { status: 'Failed', message: 'Aborted by user', completedAt: new Date() }
+        });
+      }
+    }
+
+    revalidatePath('/plans');
+    revalidatePath('/logs');
+    return { success: true };
+  } catch (e) {
+    console.error(e);
+    return { success: false };
+  }
 }
 
 export async function createPlan(data: Prisma.PlanUncheckedCreateInput) {
@@ -164,14 +216,35 @@ export async function listDirectories(dir: string) {
 
 import { spawn } from 'child_process';
 
+import { checkPlanRemoteData as rcloneCheck, purgePlanRemoteData as rclonePurge } from '@/lib/rclone';
+
+export async function checkPlanRemoteData(id: string) {
+  return await rcloneCheck(id);
+}
+
+export async function purgePlanRemoteData(id: string) {
+  return await rclonePurge(id);
+}
+
 export async function runPlanNow(id: string) {
   const scriptName = ['run', 'backup.cjs'].join('-');
-  const p = spawn('node', [scriptName, id], {
+  
+  const p = spawn(process.execPath, [scriptName, id], {
     cwd: process.cwd(),
     detached: true,
-    stdio: 'ignore'
+    // Pipe output to the Next.js server console so we can see errors in Docker logs
+    stdio: ['ignore', process.stdout, process.stderr]
   });
+  
+  p.on('error', (err) => {
+    console.error(`[runPlanNow] Failed to start subprocess:`, err);
+  });
+  
   p.unref();
+  
+  revalidatePath('/logs');
+  revalidatePath('/plans');
+  
   return { success: true };
 }
 

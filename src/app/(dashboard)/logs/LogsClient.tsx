@@ -1,16 +1,31 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Clock, FileText } from "lucide-react";
 import { BackupLog, Plan } from "@prisma/client";
+import { getLogs } from "@/app/actions";
 
 type LogWithPlan = BackupLog & { plan?: Plan | null };
 
 export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[] }) {
   const [selectedLog, setSelectedLog] = useState<LogWithPlan | null>(null);
+  const [logs, setLogs] = useState<LogWithPlan[]>(initialLogs);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const latestLogs = await getLogs();
+        setLogs(latestLogs as LogWithPlan[]);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getDuration = (start: Date, end: Date | null) => {
     if (!end) return "Running...";
@@ -35,14 +50,14 @@ export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[]
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialLogs.length === 0 && (
+              {logs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                     No logs recorded yet.
                   </TableCell>
                 </TableRow>
               )}
-              {initialLogs.map((log) => (
+              {logs.map((log) => (
                 <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSelectedLog(log)}>
                   <TableCell>
                     {log.status === "Success" && <span className="flex items-center text-green-600 font-medium"><CheckCircle2 className="w-4 h-4 mr-2" /> Success</span>}
