@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 export default async function LoginPage() {
   
   const disableLocal = process.env.DISABLE_LOCAL_AUTH === "true";
-  const hasAuthentik = !!process.env.AUTHENTIK_CLIENT_ID;
+  const hasOidc = !!(process.env.OIDC_CLIENT_ID || process.env.AUTHENTIK_CLIENT_ID);
 
   if (!disableLocal) {
     const adminCount = await prisma.user.count({ where: { password: { not: null } } });
@@ -55,11 +55,11 @@ export default async function LoginPage() {
             </form>
           )}
 
-          {hasAuthentik && (
+          {hasOidc && (
             <form
               action={async () => {
                 "use server"
-                await signIn("authentik", { redirectTo: "/" })
+                await signIn("oidc", { redirectTo: "/" })
               }}
             >
               {!disableLocal && (
@@ -75,14 +75,14 @@ export default async function LoginPage() {
                 </div>
               )}
               <Button variant="outline" type="submit" className="w-full">
-                Single Sign-On (Authentik)
+                {process.env.OIDC_NAME || "Single Sign-On (OIDC)"}
               </Button>
             </form>
           )}
           
-          {disableLocal && !hasAuthentik && (
+          {disableLocal && !hasOidc && (
             <div className="text-center text-sm text-destructive mt-4 font-medium">
-              Authentication misconfigured: Local login is disabled but Authentik variables are missing in .env.
+              Authentication misconfigured: Local login is disabled but OIDC variables are missing in .env.
             </div>
           )}
         </CardContent>

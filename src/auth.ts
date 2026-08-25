@@ -10,16 +10,20 @@ import bcrypt from "bcryptjs"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const providers: any[] = []
 
-// 1. OIDC Provider (Authentik)
-const authentikIssuer = process.env.AUTHENTIK_ISSUER || process.env.AUTHENTIK_URL
-if (process.env.AUTHENTIK_CLIENT_ID && process.env.AUTHENTIK_CLIENT_SECRET && authentikIssuer) {
-  providers.push(
-    Authentik({
-      clientId: process.env.AUTHENTIK_CLIENT_ID,
-      clientSecret: process.env.AUTHENTIK_CLIENT_SECRET,
-      issuer: authentikIssuer,
-    })
-  )
+// 1. Generic OIDC Provider (Authentik, Authelia, Keycloak, etc.)
+const oidcIssuer = process.env.OIDC_ISSUER || process.env.AUTHENTIK_ISSUER || process.env.AUTHENTIK_URL
+const oidcClientId = process.env.OIDC_CLIENT_ID || process.env.AUTHENTIK_CLIENT_ID
+const oidcClientSecret = process.env.OIDC_CLIENT_SECRET || process.env.AUTHENTIK_CLIENT_SECRET
+
+if (oidcClientId && oidcClientSecret && oidcIssuer) {
+  providers.push({
+    id: "oidc",
+    name: process.env.OIDC_NAME || "Single Sign-On",
+    type: "oidc",
+    issuer: oidcIssuer,
+    clientId: oidcClientId,
+    clientSecret: oidcClientSecret,
+  })
 }
 
 // 2. Local Credentials Provider
