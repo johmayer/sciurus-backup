@@ -76,8 +76,7 @@ DISABLE_LOCAL_AUTH="true"
 ## Authentication & Onboarding
 
 Sciurus supports secure local authentication and Generic OIDC SSO:
-- **First-Time Setup**: If local auth is enabled and no admin exists, you will be automatically redirected to `/setup` on your first visit to create a Master Admin account. The password is securely hashed via `bcryptjs` and stored in the local SQLite database.
-- **SSO Enforcement**: Setting `DISABLE_LOCAL_AUTH="true"` removes the login form entirely and routes all authentication exclusively through your configured OIDC provider.
+- **First-Time Setup**: On your first visit, you will be automatically redirected to `/setup` to create a Master Admin account, **regardless** of your SSO configuration. This secures your local vault and ensures you always have a fallback "break-glass" login if your OIDC provider goes offline. The password is securely hashed via `bcryptjs` and stored in the local SQLite database.
 
 ## Declarative Configuration (GitOps) & Encryption Vault
 

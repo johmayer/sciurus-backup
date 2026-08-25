@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { LayoutDashboard, Server, Folder, Clock, Settings, FileText, Menu } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";

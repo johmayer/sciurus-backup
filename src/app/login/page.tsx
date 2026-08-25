@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { signIn } from "@/auth";
@@ -11,11 +12,9 @@ export default async function LoginPage() {
   const disableLocal = process.env.DISABLE_LOCAL_AUTH === "true";
   const hasOidc = !!(process.env.OIDC_CLIENT_ID || process.env.AUTHENTIK_CLIENT_ID);
 
-  if (!disableLocal) {
-    const adminCount = await prisma.user.count({ where: { password: { not: null } } });
-    if (adminCount === 0) {
-      redirect("/setup");
-    }
+  const adminCount = await prisma.user.count({ where: { password: { not: null } } });
+  if (adminCount === 0) {
+    redirect("/setup");
   }
 
   return (
