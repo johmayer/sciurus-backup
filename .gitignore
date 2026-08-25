@@ -48,3 +48,4 @@ sync-config.cjs
 *.db-journal
 *.sqlite
 *.sqlite3
+run-backup.cjs
