@@ -86,33 +86,60 @@ Sciurus state can be entirely managed declaratively via a `config.yaml` file loc
 **Transparent Encryption:**
 Sciurus features an automatic encryption vault. If you drop a `config.yaml` into the directory containing plaintext secrets (e.g. `client_secret`, `token`, `password`), Sciurus will automatically encrypt them using AES-256 on boot and rewrite the YAML file with secure `ENC[...]` blobs. The background worker uses the `CONFIG_ENCRYPTION_KEY` to decrypt them in memory for unattended backups. The unencrypted `config.yaml` can be exported from the settings page.
 
-### `config.yaml` Structure
+### `config.yaml` Reference Guide
 
+The `config.yaml` file is divided into three main sections: `remotes`, `sources`, and `plans`. 
+
+#### 1. Remotes (Cloud / Storage Destinations)
+Remotes define where your backups are sent. They map 1:1 with standard `rclone` remotes.
+
+- `name` *(string)*: A unique, friendly identifier for this remote (e.g., `my_google_drive`).
+- `type` *(string)*: The rclone remote type. Common options include `drive` (Google Drive), `onedrive` (Microsoft OneDrive), `sftp`, `webdav`, `s3`, `dropbox`, `b2`, etc. Sciurus supports *any* valid rclone type.
+- `config` *(object)*: Key-value pairs matching the exact rclone configuration fields for the chosen `type`. 
+  - Examples: `user`, `host`, `url`, `client_id`, `client_secret`, `token`.
+  - **Security Note:** Any fields named `pass`, `password`, `token`, or `client_secret` will be automatically encrypted by Sciurus upon startup and replaced with secure `ENC[...]` blobs.
+
+#### 2. Sources (Local Directories)
+Sources define the local folders on the server (or inside the Docker container) that you want to back up.
+
+- `name` *(string)*: A unique, friendly identifier for this source (e.g., `app_database`, `docker_volumes`).
+- `path` *(string)*: The absolute path to the directory on the local filesystem (e.g., `/var/lib/docker/volumes`). **Note:** Sciurus will test this path on startup; the software must have both read and write permissions to this folder.
+
+#### 3. Plans (Scheduled Jobs)
+Plans glue a Source and a Remote together, defining when and how the backup should occur.
+
+- `name` *(string)*: A friendly name for the backup job.
+- `sourceName` *(string)*: Must exactly match the `name` of a Source defined above.
+- `remoteName` *(string)*: Must exactly match the `name` of a Remote defined above.
+- `schedule` *(string)*: A standard cron expression defining the backup frequency (e.g., `'0 0 * * *'` for daily at midnight, `'*/15 * * * *'` for every 15 minutes).
+- `enabled` *(boolean)*: `true` or `false`. If `false`, the background worker will ignore this schedule. Defaults to `true`.
+- `encrypt` *(boolean)*: `true` or `false`. If `true`, Sciurus will automatically wrap the target destination in an `rclone crypt` overlay, encrypting filenames and file contents before they leave the server.
+- `password` *(string)*: Required if `encrypt` is `true`. The master password used to encrypt the backup. Sciurus will automatically encrypt this string in the YAML file.
+- `remoteFolderPath` *(string)*: The specific directory path inside the remote destination where backups should be stored (e.g., `/server_backups/app_data/`). Defaults to `""` (the root of the remote).
+- `backupPrefix` *(string)*: A prefix string used to name the backup folder/archive on the remote. Defaults to `"backup"`.
+- `status` *(string)*: Tracks the health of the plan. Typically set to `"Active"`, but can also be `"Paused"` or `"Failed"`.
+
+### Example `config.yaml`
 ```yaml
-# Cloud / Storage destinations
 remotes:
   - name: my_drive
-    type: drive # Any valid rclone remote type (although only SFTP, Google Drive, OneDrive and WebDAV are supported from the UI all types should work)
+    type: drive
     config:
-      # Key-value pairs for rclone configuration
-      client_id: xxx
-      # Secrets are automatically encrypted by Sciurus!
-      client_secret: ENC[iv:ciphertext:authtag]
+      client_id: my_oauth_id
+      client_secret: ENC[iv:ciphertext:authtag] # Auto-encrypted!
       token: ENC[...]
 
-# Local directories to back up
 sources:
   - name: documents
     path: /path/to/my/documents
 
-# Scheduled Jobs
 plans:
   - name: Daily Backup
     sourceName: documents
     remoteName: my_drive
-    schedule: '0 0 * * *' # Standard Cron syntax
-    encrypt: true # Natively wrap the remote in rclone crypt
-    password: ENC[...] # Automatically encrypted
+    schedule: '0 0 * * *'
+    encrypt: true
+    password: ENC[...] # Auto-encrypted!
     enabled: true
     remoteFolderPath: /backups/
     backupPrefix: my_daily_backup
