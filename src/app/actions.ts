@@ -165,8 +165,9 @@ export async function listDirectories(dir: string) {
 import { spawn } from 'child_process';
 
 export async function runPlanNow(id: string) {
-  const scriptPath = path.join(process.cwd(), 'run-backup.cjs');
-  const p = spawn('node', [scriptPath, id], {
+  const scriptName = ['run', 'backup.cjs'].join('-');
+  const p = spawn('node', [scriptName, id], {
+    cwd: process.cwd(),
     detached: true,
     stdio: 'ignore'
   });
