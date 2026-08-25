@@ -24,11 +24,13 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
   const [loadingDirs, setLoadingDirs] = useState(false);
   const [dirError, setDirError] = useState("");
 
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const loadDirectories = async (targetPath: string) => {
     setLoadingDirs(true);
     setDirError("");
+    setSaveError("");
     try {
       const res = await listDirectories(targetPath);
       if (res.success && res.directories) {
@@ -36,6 +38,11 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
         setPath(res.currentPath || targetPath);
       } else {
         setDirError(res.error || "Failed to load directory");
+        // Fallback to loading root tree so they can browse, but preserve their path input
+        const rootRes = await listDirectories("/");
+        if (rootRes.success && rootRes.directories) {
+          setDirectories(rootRes.directories);
+        }
       }
     } catch (err) {
       setDirError("An unexpected error occurred.");
@@ -45,20 +52,24 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
   };
 
   useEffect(() => {
-    if (open && editItem) {
-      setName(editItem.name);
-      setPath(editItem.path);
-      // eslint-disable-next-line
-      loadDirectories(editItem.path);
-    } else if (open && !editItem) {
-      setName("");
-      setPath("/");
-      // eslint-disable-next-line
-      loadDirectories("/");
+    if (open) {
+      setSaveError("");
+      if (editItem) {
+        setName(editItem.name);
+        setPath(editItem.path);
+        // eslint-disable-next-line
+        loadDirectories(editItem.path);
+      } else {
+        setName("");
+        setPath("/");
+        // eslint-disable-next-line
+        loadDirectories("/");
+      }
     }
   }, [open, editItem]);
 
   const handleSave = async () => {
+    setSaveError("");
     try {
       setSaving(true);
       if (editItem) {
@@ -69,7 +80,7 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to save source", err);
-      alert("Failed to save source.");
+      setSaveError(err instanceof Error ? err.message : "Failed to save source. Check if the path exists.");
     } finally {
       setSaving(false);
     }
@@ -84,6 +95,12 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
             {editItem ? "Modify your local backup source." : "Specify a local directory path on the server that you want to back up."}
           </DialogDescription>
         </DialogHeader>
+        
+        {saveError && (
+          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md border border-destructive/20 font-medium">
+            {saveError}
+          </div>
+        )}
         
         <div className="grid gap-6 py-4">
           <div className="grid gap-2">
@@ -118,34 +135,36 @@ export default function AddSourceDialog({ open, onOpenChange, editItem }: AddSou
               {loadingDirs && <Loader2 className="h-3 w-3 animate-spin" />}
             </div>
             
-            {dirError ? (
-              <div className="p-4 text-sm text-destructive text-center">{dirError}</div>
-            ) : (
-              <ScrollArea className="h-[250px] p-2">
-                <div className="flex flex-col gap-1">
-                  {directories.map((dir, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => loadDirectories(dir.path)}
-                      className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent hover:text-accent-foreground rounded-sm text-sm text-left w-full transition-colors"
-                    >
-                      {dir.name === '..' ? (
-                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Folder className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span>{dir.name}</span>
-                    </button>
-                  ))}
-                  {directories.length === 0 && !loadingDirs && (
-                    <div className="text-sm text-muted-foreground p-4 text-center">
-                      No subdirectories found.
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+            {dirError && (
+              <div className="px-3 py-2 text-xs text-destructive border-b bg-destructive/10">
+                {dirError} (Showing root directory instead)
+              </div>
             )}
+            
+            <ScrollArea className="h-[250px] p-2">
+              <div className="flex flex-col gap-1">
+                {directories.map((dir, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => loadDirectories(dir.path)}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent hover:text-accent-foreground rounded-sm text-sm text-left w-full transition-colors"
+                  >
+                    {dir.name === '..' ? (
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span>{dir.name}</span>
+                  </button>
+                ))}
+                {directories.length === 0 && !loadingDirs && (
+                  <div className="text-sm text-muted-foreground p-4 text-center">
+                    No subdirectories found.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
         </div>
         

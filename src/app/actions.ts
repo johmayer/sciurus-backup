@@ -59,6 +59,11 @@ export async function getSources() {
 }
 
 export async function createSource(data: Prisma.SourceCreateInput) {
+  try {
+    fs.accessSync(data.path, fs.constants.R_OK | fs.constants.W_OK);
+  } catch (err) {
+    throw new Error(`Path does not exist or the software lacks read/write permissions: ${data.path}`);
+  }
   await prisma.source.create({ data })
   await syncStateToDisk()
   revalidatePath('/sources')
@@ -178,6 +183,13 @@ export async function updateRemote(id: string, data: Prisma.RemoteUpdateInput) {
 }
 
 export async function updateSource(id: string, data: Prisma.SourceUpdateInput) {
+  if (data.path) {
+    try {
+      fs.accessSync(data.path as string, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (err) {
+      throw new Error(`Path does not exist or the software lacks read/write permissions: ${data.path}`);
+    }
+  }
   await prisma.source.update({ where: { id }, data })
   await syncStateToDisk()
   revalidatePath('/sources')
@@ -324,4 +336,31 @@ export async function exportDecryptedConfig(password?: string) {
   });
 
   return yaml.dump(doc, { lineWidth: -1 });
+}
+
+export async function markConfigValidated() {
+  const { cookies } = await import('next/headers');
+  (await cookies()).set('config_validated', 'true', { path: '/' });
+}
+
+export async function validateSourcePath(pathStr: string): Promise<{valid: boolean, error?: string}> {
+  try {
+    const fs = await import('fs');
+    fs.accessSync(pathStr, fs.constants.R_OK | fs.constants.W_OK);
+    return { valid: true };
+  } catch (err: any) {
+    return { valid: false, error: "Path does not exist or the software lacks read/write permissions" };
+  }
+}
+
+export async function validateRemoteById(id: string): Promise<{valid: boolean, error?: string}> {
+  try {
+    const remote = await prisma.remote.findUnique({ where: { id } });
+    if (!remote) return { valid: false, error: "Remote not found" };
+    const res = await verifyRemoteConfig(remote.type, JSON.parse(remote.config || "{}"));
+    if (res.success) return { valid: true };
+    return { valid: false, error: res.error };
+  } catch (err: any) {
+    return { valid: false, error: err.message };
+  }
 }

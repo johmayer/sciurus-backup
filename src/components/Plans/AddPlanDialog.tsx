@@ -32,6 +32,7 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
 
   const [sources, setSources] = useState<Source[]>([]);
   const [remotes, setRemotes] = useState<Remote[]>([]);
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
   }, [open]);
 
   useEffect(() => {
+    if (open) setSaveError("");
     if (open && editItem) {
       setName(editItem.name);
       setSource(editItem.sourceId);
@@ -58,6 +60,7 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
   }, [open, editItem]);
 
   const handleSave = async () => {
+    setSaveError("");
     setSaving(true);
     try {
       if (editItem) {
@@ -89,7 +92,7 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to save plan", err);
-      alert("Failed to save plan.");
+      setSaveError(err instanceof Error ? err.message : "Failed to save plan.");
     } finally {
       setSaving(false);
     }
@@ -104,6 +107,12 @@ export default function AddPlanDialog({ open, onOpenChange, editItem }: AddPlanD
             {editItem ? "Modify your automated backup schedule." : "Schedule a recurring backup from a local folder to a remote."}
           </DialogDescription>
         </DialogHeader>
+        
+        {saveError && (
+          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md border border-destructive/20 font-medium">
+            {saveError}
+          </div>
+        )}
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-[130px_1fr] items-center gap-4">
