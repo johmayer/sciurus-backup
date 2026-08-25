@@ -19,6 +19,8 @@ COPY . .
 RUN npx prisma generate
 RUN npx esbuild worker.ts --bundle --platform=node --target=node20 --outfile=worker.cjs --format=cjs
 RUN npx esbuild sync-config.ts --bundle --platform=node --target=node20 --outfile=sync-config.cjs --format=cjs
+RUN npx esbuild run-backup.ts --bundle --platform=node --target=node20 --outfile=run-backup.cjs --format=cjs
+RUN sed -i 's|import_meta\\.url|"file://" + __filename|g' worker.cjs sync-config.cjs run-backup.cjs
 RUN npx prisma db push
 RUN npm run build
 
@@ -41,6 +43,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/worker.cjs ./worker.cjs
 COPY --from=builder --chown=nextjs:nodejs /app/sync-config.cjs ./sync-config.cjs
+COPY --from=builder --chown=nextjs:nodejs /app/run-backup.cjs ./run-backup.cjs
 COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
 
 RUN chmod +x ./start.sh

@@ -162,11 +162,15 @@ export async function listDirectories(dir: string) {
   }
 }
 
-import { executeRcloneBackup } from '@/lib/rclone';
+import { spawn } from 'child_process';
 
 export async function runPlanNow(id: string) {
-  // Fire and forget
-  executeRcloneBackup(id).catch(console.error);
+  const scriptPath = path.join(process.cwd(), 'run-backup.cjs');
+  const p = spawn('node', [scriptPath, id], {
+    detached: true,
+    stdio: 'ignore'
+  });
+  p.unref();
   return { success: true };
 }
 
