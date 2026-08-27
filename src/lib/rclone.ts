@@ -20,6 +20,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { encryptSecret } from './encryption';
 
+function truncateLog(log: string, maxLines = 50): string {
+  if (!log) return "";
+  const lines = log.split('\n');
+  if (lines.length > maxLines) {
+    return lines.slice(lines.length - maxLines).join('\n');
+  }
+  return log;
+}
+
 async function prepareConfigFile(plan: any, overridePassword?: string): Promise<{ confPath: string, destination: string, env: NodeJS.ProcessEnv }> {
   const remoteConfig = JSON.parse(plan.remote.config);
   const baseRemoteName = `remote_${plan.remote.id}`;
@@ -255,15 +264,20 @@ export async function executeRcloneBackup(planId: string) {
           data: { status: code === 0 ? 'Active' : 'Error' }
         });
         
-        await prisma.backupLog.update({
-          where: { id: backupLog.id },
-          data: {
-            status: code === 0 ? "Success" : "Failed",
-            message: code === 0 ? "Backup completed successfully" : "Backup failed",
-            rawOutput: log,
-            completedAt: new Date()
-          }
-        });
+        if (code === 0) {
+          // Delete logs for successful executions
+          await prisma.backupLog.delete({ where: { id: backupLog.id } });
+        } else {
+          await prisma.backupLog.update({
+            where: { id: backupLog.id },
+            data: {
+              status: "Failed",
+              message: "Backup failed",
+              rawOutput: truncateLog(log),
+              completedAt: new Date()
+            }
+          });
+        }
         if (code === 0) resolve(log);
         else reject(new Error(`Backup failed with code ${code}`));
       });
@@ -377,15 +391,19 @@ export async function executeRcloneRestore(planId: string, overridePassword?: st
           data: { status: code === 0 ? 'Active' : 'Error' }
         });
 
-        await prisma.backupLog.update({
-          where: { id: backupLog.id },
-          data: {
-            status: code === 0 ? "Success" : "Failed",
-            message: code === 0 ? "Restore completed successfully" : "Restore failed",
-            rawOutput: log + "\n[Restore Action]",
-            completedAt: new Date()
-          }
-        });
+        if (code === 0) {
+          await prisma.backupLog.delete({ where: { id: backupLog.id } });
+        } else {
+          await prisma.backupLog.update({
+            where: { id: backupLog.id },
+            data: {
+              status: "Failed",
+              message: "Restore failed",
+              rawOutput: truncateLog(log + "\n[Restore Action]"),
+              completedAt: new Date()
+            }
+          });
+        }
         if (code === 0) resolve(log);
         else reject(new Error(`Restore failed with code ${code}`));
       });

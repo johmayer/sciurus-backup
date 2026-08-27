@@ -96,6 +96,16 @@ export async function getLogs() {
   })
 }
 
+export async function deleteLog(id: string) {
+  await prisma.backupLog.delete({ where: { id } });
+  revalidatePath('/logs');
+}
+
+export async function deleteMultipleLogs(ids: string[]) {
+  await prisma.backupLog.deleteMany({ where: { id: { in: ids } } });
+  revalidatePath('/logs');
+}
+
 export async function cancelPlan(id: string) {
   try {
     const { exec } = require('child_process');

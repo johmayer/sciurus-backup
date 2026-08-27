@@ -4,15 +4,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Clock, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckCircle2, XCircle, Clock, FileText, Trash2 } from "lucide-react";
 import { BackupLog, Plan } from "@prisma/client";
-import { getLogs } from "@/app/actions";
+import { getLogs, deleteLog, deleteMultipleLogs } from "@/app/actions";
 
 type LogWithPlan = BackupLog & { plan?: Plan | null };
 
 export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[] }) {
   const [selectedLog, setSelectedLog] = useState<LogWithPlan | null>(null);
   const [logs, setLogs] = useState<LogWithPlan[]>(initialLogs);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -35,13 +38,69 @@ export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[]
     return `${Math.floor(sec / 60)}m ${sec % 60}s`;
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.size === logs.length && logs.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(logs.map(l => l.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      await deleteMultipleLogs(Array.from(selectedIds));
+      setLogs(logs.filter(l => !selectedIds.has(l.id)));
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSingle = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await deleteLog(id);
+      setLogs(logs.filter(l => l.id !== id));
+      const newSet = new Set(selectedIds);
+      newSet.delete(id);
+      setSelectedIds(newSet);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
-    <>
+    <div className="space-y-4">
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 bg-muted p-2 rounded-md">
+          <span className="text-sm font-medium pl-2">{selectedIds.size} selected</span>
+          <Button variant="destructive" size="sm" onClick={handleDeleteSelected} disabled={deleting}>
+            <Trash2 className="h-4 w-4 mr-2" /> Delete Selected
+          </Button>
+        </div>
+      )}
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px] text-center">
+                  <Checkbox 
+                    checked={logs.length > 0 && selectedIds.size === logs.length} 
+                    onCheckedChange={toggleSelectAll} 
+                  />
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Plan Name</TableHead>
                 <TableHead>Started At</TableHead>
@@ -52,24 +111,34 @@ export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[]
             <TableBody>
               {logs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
                     No logs recorded yet.
                   </TableCell>
                 </TableRow>
               )}
               {logs.map((log) => (
                 <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSelectedLog(log)}>
+                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={selectedIds.has(log.id)} 
+                      onCheckedChange={() => toggleSelect(log.id)} 
+                    />
+                  </TableCell>
                   <TableCell>
                     {log.status === "Success" && <span className="flex items-center text-green-600 font-medium"><CheckCircle2 className="w-4 h-4 mr-2" /> Success</span>}
                     {log.status === "Failed" && <span className="flex items-center text-destructive font-medium"><XCircle className="w-4 h-4 mr-2" /> Failed</span>}
                     {log.status === "Running" && <span className="flex items-center text-yellow-600 font-medium"><Clock className="w-4 h-4 mr-2" /> Running</span>}
+                    {log.status === "Restoring" && <span className="flex items-center text-yellow-600 font-medium"><Clock className="w-4 h-4 mr-2" /> Restoring</span>}
                   </TableCell>
                   <TableCell className="font-medium">{log.plan?.name || "Deleted Plan"}</TableCell>
                   <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
                   <TableCell>{getDuration(log.createdAt, log.completedAt)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-2">
                     <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedLog(log); }}>
-                      View Details
+                      View
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={(e) => handleDeleteSingle(e, log.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -118,6 +187,6 @@ export default function LogsClient({ initialLogs }: { initialLogs: LogWithPlan[]
           </DialogContent>
         )}
       </Dialog>
-    </>
+    </div>
   );
 }
