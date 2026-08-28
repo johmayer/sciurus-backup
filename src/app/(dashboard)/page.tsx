@@ -23,9 +23,11 @@ export default async function Dashboard() {
   const planCount = await prisma.plan.count();
   const activePlans = await prisma.plan.count({ where: { status: 'Active' } });
   
-  // Calculate total bytes from logs
-  const logs = await prisma.backupLog.findMany({ where: { status: 'Success' }, select: { bytes: true } });
-  const totalBytes = logs.reduce((acc, log) => acc + Number(log.bytes || 0), 0);
+  // Calculate total bytes directly from the plans
+  const plans = await prisma.plan.findMany({ select: { lastBackupSize: true } });
+  const totalBytes = plans.reduce((acc, plan) => {
+    return acc + Number(plan.lastBackupSize || 0);
+  }, 0);
   const totalGb = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
 
   const errorCount = await prisma.backupLog.count({
@@ -54,7 +56,7 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalGb} GB</div>
-            <p className="text-xs text-muted-foreground">Cumulative successful backups</p>
+            <p className="text-xs text-muted-foreground">Across all configured plans</p>
           </CardContent>
         </Card>
         

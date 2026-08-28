@@ -265,6 +265,27 @@ export async function executeRcloneBackup(planId: string) {
         });
         
         if (code === 0) {
+          let finalBytes = null;
+          let finalFiles = null;
+          try {
+            const { stdout: sizeStr } = await execAsync(`rclone size ${destination} --config ${confPath} --json`, { env });
+            const sizeData = JSON.parse(sizeStr);
+            finalBytes = sizeData.bytes;
+            finalFiles = sizeData.count;
+          } catch (e) {
+            console.error("Failed to fetch final remote size", e);
+          }
+
+          if (finalBytes !== null) {
+            await prisma.plan.update({
+              where: { id: planId },
+              data: {
+                lastBackupSize: finalBytes,
+                lastBackupFiles: finalFiles
+              }
+            });
+          }
+
           // Keep the log entry for successful executions, but clear the raw output to save space
           await prisma.backupLog.update({
             where: { id: backupLog.id },
@@ -400,6 +421,27 @@ export async function executeRcloneRestore(planId: string, overridePassword?: st
         });
 
         if (code === 0) {
+          let finalBytes = null;
+          let finalFiles = null;
+          try {
+            const { stdout: sizeStr } = await execAsync(`rclone size ${remotePath} --config ${confPath} --json`, { env });
+            const sizeData = JSON.parse(sizeStr);
+            finalBytes = sizeData.bytes;
+            finalFiles = sizeData.count;
+          } catch (e) {
+            console.error("Failed to fetch final remote size", e);
+          }
+
+          if (finalBytes !== null) {
+            await prisma.plan.update({
+              where: { id: planId },
+              data: {
+                lastBackupSize: finalBytes,
+                lastBackupFiles: finalFiles
+              }
+            });
+          }
+
           await prisma.backupLog.update({
             where: { id: backupLog.id },
             data: {

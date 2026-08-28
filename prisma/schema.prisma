@@ -39,6 +39,9 @@ model Plan {
   backupPrefix     String   @default("backup")
   status           String   @default("Active")
   
+  lastBackupSize   BigInt?
+  lastBackupFiles  Int?
+  
   sourceId    String
   source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   remoteId    String
