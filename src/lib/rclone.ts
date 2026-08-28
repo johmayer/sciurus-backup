@@ -265,8 +265,16 @@ export async function executeRcloneBackup(planId: string) {
         });
         
         if (code === 0) {
-          // Delete logs for successful executions
-          await prisma.backupLog.delete({ where: { id: backupLog.id } });
+          // Keep the log entry for successful executions, but clear the raw output to save space
+          await prisma.backupLog.update({
+            where: { id: backupLog.id },
+            data: {
+              status: "Success",
+              message: "Backup completed successfully",
+              rawOutput: null,
+              completedAt: new Date()
+            }
+          });
         } else {
           await prisma.backupLog.update({
             where: { id: backupLog.id },
@@ -392,7 +400,15 @@ export async function executeRcloneRestore(planId: string, overridePassword?: st
         });
 
         if (code === 0) {
-          await prisma.backupLog.delete({ where: { id: backupLog.id } });
+          await prisma.backupLog.update({
+            where: { id: backupLog.id },
+            data: {
+              status: "Success",
+              message: "Restore completed successfully",
+              rawOutput: null,
+              completedAt: new Date()
+            }
+          });
         } else {
           await prisma.backupLog.update({
             where: { id: backupLog.id },
