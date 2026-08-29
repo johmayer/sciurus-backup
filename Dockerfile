@@ -1,57 +1,34 @@
-FROM node:20-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-RUN apt-get update && apt-get install -y curl unzip sudo procps && \
-    sudo -v ; curl https://rclone.org/install.sh | sudo bash && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-FROM base AS deps
+# Stage 1: Build the Vite Frontend
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+COPY frontend/package*.json ./
 RUN npm ci
-
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-# We use SQLite, so we need to generate the Prisma client before building
-RUN npx prisma generate
-RUN npx esbuild worker.ts --bundle --platform=node --target=node20 --outfile=worker.cjs --format=cjs
-RUN npx esbuild sync-config.ts --bundle --platform=node --target=node20 --outfile=sync-config.cjs --format=cjs
-RUN npx esbuild run-backup.ts --bundle --platform=node --target=node20 --outfile=run-backup.cjs --format=cjs
-RUN sed -i 's|import_meta\.url|"file://" + __filename|g' worker.cjs sync-config.cjs run-backup.cjs
-RUN npx prisma db push
+COPY frontend/ ./
 RUN npm run build
 
-FROM base AS runner
+# Stage 2: Build the Rust Backend
+FROM rust:1.80-alpine AS backend-builder
+RUN apk add --no-cache musl-dev sqlite-dev openssl-dev pkgconfig
+WORKDIR /app
+COPY backend/Cargo.toml backend/Cargo.lock ./
+# Create dummy src/main.rs to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
+COPY backend/src ./src
+RUN cargo build --release
+
+# Stage 3: Create the runtime image
+FROM alpine:3.19
+# Install rclone for backups and tzdata for scheduling timezones
+RUN apk add --no-cache sqlite rclone openssl libgcc tzdata curl
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Copy the compiled Rust binary
+COPY --from=backend-builder /app/target/release/backend /app/backend
+# Copy the compiled frontend files
+COPY --from=frontend-builder /app/dist /app/public
 
-# Create a dedicated user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Expose the default backend port
+EXPOSE 3001
 
-# Install Prisma CLI globally to run migrations in start.sh
-RUN npm i -g prisma@5.22.0
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/worker.cjs ./worker.cjs
-COPY --from=builder --chown=nextjs:nodejs /app/sync-config.cjs ./sync-config.cjs
-COPY --from=builder --chown=nextjs:nodejs /app/run-backup.cjs ./run-backup.cjs
-COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
-
-RUN chmod +x ./start.sh
-
-USER nextjs
-
-EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-CMD ["./start.sh"]
+# Start the backend
+CMD ["/app/backend"]
