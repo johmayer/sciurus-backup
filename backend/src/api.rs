@@ -398,8 +398,11 @@ async fn login(State(pool): State<SqlitePool>, Json(payload): Json<LoginRequest>
 #[derive(serde::Serialize)]
 struct AuthStatus {
     needs_setup: bool,
+    #[serde(rename = "hasOidc")]
     has_oidc: bool,
+    #[serde(rename = "oidcName")]
     oidc_name: String,
+    #[serde(rename = "disableLocal")]
     disable_local_auth: bool,
 }
 
