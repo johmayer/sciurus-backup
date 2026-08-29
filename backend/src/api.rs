@@ -480,7 +480,7 @@ async fn oidc_login() -> Redirect {
         auth_endpoint = config.authorization_endpoint;
     }
     
-    let auth_url = format!("{}?client_id={}&response_type=code&scope=openid profile email&redirect_uri=http://localhost:5173/api/auth/oidc/callback", auth_endpoint, client_id);
+    let auth_url = format!("{}?client_id={}&response_type=code&scope=openid profile email&redirect_uri={}/api/auth/oidc/callback", auth_endpoint, client_id, std::env::var("PUBLIC_URL").unwrap_or_else(|_| "http://localhost:5173".to_string()));
     Redirect::temporary(&auth_url)
 }
 
@@ -503,7 +503,7 @@ async fn oidc_callback(State(pool): State<SqlitePool>, Query(params): Query<Oidc
             ("code", &params.code),
             ("client_id", &client_id),
             ("client_secret", &client_secret),
-            ("redirect_uri", "http://localhost:5173/api/auth/oidc/callback"),
+            ("redirect_uri", &format!("{}/api/auth/oidc/callback", std::env::var("PUBLIC_URL").unwrap_or_else(|_| "http://localhost:5173".to_string()))),
         ])
         .send()
         .await;

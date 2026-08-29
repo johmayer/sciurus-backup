@@ -64,6 +64,7 @@ Sciurus Backend relies on environment variables for configuration. Below is a de
 | `CONFIG_PATH` | Optional | `config.yaml` | Path to the declarative configuration file. |
 | `PORT` | Optional | `3001` | The port the backend listens on. |
 | `DISABLE_LOCAL_AUTH` | Optional | `false` | If set to `"true"`, completely disables local password login and mandates OIDC. |
+| `PUBLIC_URL` | Optional | `http://localhost:5173` | The public base URL of your Sciurus installation (e.g. `https://sciurus.example.com`). Required for OIDC redirect callbacks to work correctly when deployed behind a reverse proxy. |
 | `OIDC_ISSUER` | Optional | | The root URL of your OpenID Connect issuer (e.g. Authentik, Keycloak). Required if configuring OIDC. |
 | `OIDC_CLIENT_ID` | Optional | | Your OIDC Client ID. Required if configuring OIDC. |
 | `OIDC_CLIENT_SECRET`| Optional | | Your OIDC Client Secret. Required if configuring OIDC. |
