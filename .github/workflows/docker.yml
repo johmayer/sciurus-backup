@@ -59,7 +59,7 @@ jobs:
       - name: Run Auth Protection Test
         run: |
           docker run -d -p 3001:3001 --name test-container sciurus-test:latest
-          python3 tests/check_auth.py
+          python3 tests/check_auth.py || (docker logs test-container && exit 1) || (docker logs test-container && exit 1)
           docker rm -f test-container
 
       - name: Push Docker image
