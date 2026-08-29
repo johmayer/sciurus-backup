@@ -14,6 +14,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    if (token) {
+      localStorage.setItem("token", token);
+      navigate("/");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     fetchApi("/auth/status").then((res: any) => {
       setConfig(res);
       if (res.needs_setup) navigate("/setup");
