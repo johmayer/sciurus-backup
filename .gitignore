@@ -28,3 +28,7 @@
 *.sqlite
 
 config.yaml
+
+# Data directories
+/data/
+data/
