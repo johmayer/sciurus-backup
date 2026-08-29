@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Build the Rust Backend
-FROM rust:1.80-alpine AS backend-builder
+FROM rust:alpine AS backend-builder
 RUN apk add --no-cache musl-dev sqlite-dev openssl-dev pkgconfig
 WORKDIR /app
 COPY backend/Cargo.toml backend/Cargo.lock ./
