@@ -15,11 +15,12 @@ ENV FRONTEND_DIR=/app/public
 COPY backend/Cargo.toml backend/Cargo.lock ./
 # Create dummy src/main.rs to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
-COPY backend/src ./src
+COPY backend/ ./
+RUN touch src/main.rs
 RUN cargo build --release
 
 # Stage 3: Create the runtime image
-FROM alpine:latest
+FROM alpine:edge
 # Install rclone for backups and tzdata for scheduling timezones
 RUN apk add --no-cache sqlite rclone openssl libgcc tzdata curl
 WORKDIR /app
