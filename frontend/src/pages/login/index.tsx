@@ -16,7 +16,7 @@ export default function LoginPage() {
   useEffect(() => {
     fetchApi("/auth/status").then((res: any) => {
       setConfig(res);
-      if (!res.hasAdmin) navigate("/setup");
+      if (res.needs_setup) navigate("/setup");
     }).catch(() => {
       setError("Failed to load auth config");
     });
