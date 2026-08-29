@@ -1,6 +1,7 @@
 # Stage 1: Build the Vite Frontend
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
+ENV FRONTEND_DIR=/app/public
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
@@ -10,6 +11,7 @@ RUN npm run build
 FROM rust:alpine AS backend-builder
 RUN apk add --no-cache musl-dev sqlite-dev openssl-dev pkgconfig
 WORKDIR /app
+ENV FRONTEND_DIR=/app/public
 COPY backend/Cargo.toml backend/Cargo.lock ./
 # Create dummy src/main.rs to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
@@ -17,10 +19,11 @@ COPY backend/src ./src
 RUN cargo build --release
 
 # Stage 3: Create the runtime image
-FROM alpine:3.19
+FROM alpine:latest
 # Install rclone for backups and tzdata for scheduling timezones
 RUN apk add --no-cache sqlite rclone openssl libgcc tzdata curl
 WORKDIR /app
+ENV FRONTEND_DIR=/app/public
 
 # Copy the compiled Rust binary
 COPY --from=backend-builder /app/target/release/backend /app/backend
