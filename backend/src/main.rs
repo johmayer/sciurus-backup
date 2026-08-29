@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok();
     println!("Starting Sciurus Backup Rust Backend...");
 
-    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:../data/sciurus.db".to_string());
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/sciurus.db".to_string());
     
     // Ensure the data directory exists
     if db_url.starts_with("sqlite:") {
@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     println!("Listening on {}", addr);
     
     let listener = tokio::net::TcpListener::bind(&addr).await?;
